@@ -60,6 +60,12 @@ modeling. With 958 rows across all specialties, peer groups in Hawaii are too sm
 (fewer than 5 members in many cases) to produce statistically reliable z-scores.
 All Hawaii results are flagged as low-confidence and reported separately.
 
+![Billing inflation ratio by specialty](outputs/figures/01_billing_inflation_by_specialty.png)
+*Figure 1. Distribution of billing inflation ratios by specialty across 85,862 provider-procedure
+combinations. The green dotted line marks the legitimate upper bound (~3x). The red dashed line
+marks the anomaly threshold (8x). Physical Medicine and Chiropractic show the heaviest right tails —
+consistent with their documented role in PIP mill billing.*
+
 ---
 
 ## Methods
@@ -144,6 +150,11 @@ type of anomaly they represent. Three clusters emerge consistently from the data
 - **High inflation and high volume** — extreme on both dimensions simultaneously,
   consistent with organized fraud ring activity
 
+![Cluster profiles](outputs/figures/03_cluster_profiles.png)
+*Figure 2. Normalized average feature values per cluster. Each bar group represents one
+of the four features for a given cluster. The height shows the relative level of that
+feature compared to the other clusters — revealing what makes each fraud typology distinct.*
+
 ### Step 5 — OIG exclusion list cross-reference
 
 The Office of Inspector General publishes a monthly list of providers excluded
@@ -172,6 +183,13 @@ evidence that the anomaly signals are real.
   of top-flagged providers** in this Medicare dataset — a finding that
   diverges from the conventional PIP mill narrative, which emphasizes
   clinic-level organized fraud, and warrants further investigation
+
+![Provider anomaly map](outputs/figures/02_anomaly_scatter.png)
+*Figure 3. Billing inflation ratio vs median services per patient for 38,816 providers.
+Each point is one provider, colored by K-means cluster. Black dots mark the top 2% most
+anomalous providers by Isolation Forest score. Green dotted lines mark legitimate practice
+thresholds. Providers in the top-right quadrant — high inflation and high treatment volume
+simultaneously — represent the highest investigation priority.*
 
 ---
 

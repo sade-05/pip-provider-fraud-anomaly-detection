@@ -1,0 +1,16 @@
+Provider,Specialty,State,Org,Anomaly Score,Inflation Ratio,Svc/Patient,Inflation Z-Score,Cluster,Domain Flags
+Roth,Chiropractic,PA,0,0.22,9.67,27.73,9.35,High inflation + high volume,Bills 10x Medicare rate | 28 sessions/patient (elevated) | Billing 9.4 SDs above specialty peers
+Ritschel,Chiropractic,NJ,0,0.19,3.43,37.35,2.72,High inflation + high volume,37 sessions/patient (clinical norm: 8-14)
+Gianni,Chiropractic,NY,0,0.19,8.19,28.11,5.4,High inflation + high volume,Bills 8x Medicare rate | 28 sessions/patient (elevated) | Billing 5.4 SDs above specialty peers
+Jamieson,Chiropractic,NY,0,0.18,3.43,133.67,1.41,High inflation + high volume,134 sessions/patient (clinical norm: 8-14)
+Bassel,Chiropractic,NY,0,0.17,13.56,12.53,10.27,High inflation + high volume,Bills 14x Medicare rate | Billing 10.3 SDs above specialty peers
+Vliegenthart,Orthopedic Surgery,FL,0,0.17,22.85,1.89,8.54,High inflation + high volume,Bills 23x Medicare rate | Billing 8.5 SDs above specialty peers
+Ani,Orthopedic Surgery,NJ,0,0.16,21.27,1.22,6.33,High inflation + high volume,Bills 21x Medicare rate | Billing 6.3 SDs above specialty peers
+Davis,Chiropractic,FL,0,0.16,3.44,26.06,0.45,High inflation + high volume,26 sessions/patient (elevated)
+Jones,Physical Medicine and Rehabilitation,FL,0,0.16,44.82,4.29,4.42,High inflation + high volume,Bills 45x Medicare rate | Billing 4.4 SDs above specialty peers
+Lauro,Chiropractic,NY,0,0.16,6.17,23.24,4.37,High inflation + high volume,Bills 6x Medicare rate | 23 sessions/patient (elevated) | Billing 4.4 SDs above specialty peers
+Furshman,Chiropractic,FL,0,0.16,3.33,38.92,0.33,High inflation + high volume,39 sessions/patient (clinical norm: 8-14)
+Donaruma,Chiropractic,NJ,0,0.16,8.99,17.38,5.25,High inflation + high volume,Bills 9x Medicare rate | Billing 5.2 SDs above specialty peers
+Chatterjee,Orthopedic Surgery,FL,0,0.16,16.71,1.69,4.62,High inflation + high volume,Bills 17x Medicare rate | Billing 4.6 SDs above specialty peers
+Verne,Chiropractic,FL,0,0.16,1.5,38.4,-1.42,High inflation + high volume,38 sessions/patient (clinical norm: 8-14)
+Witek,Chiropractic,NJ,0,0.16,8.85,16.81,4.99,High inflation + high volume,Bills 9x Medicare rate | Billing 5.0 SDs above specialty peers

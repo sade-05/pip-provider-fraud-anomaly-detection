@@ -150,7 +150,7 @@ type of anomaly they represent. Three clusters emerge consistently from the data
 - **High inflation and high volume** — extreme on both dimensions simultaneously,
   consistent with organized fraud ring activity
 
-![Cluster profiles](outputs/figures/03_cluster_profiles.png)
+![Cluster profiles](outputs/figures/03_cluster_profiles.png?raw=true) 
 *Figure 2. Normalized average feature values per cluster. Each bar group represents one
 of the four features for a given cluster. The height shows the relative level of that
 feature compared to the other clusters — revealing what makes each fraud typology distinct.*

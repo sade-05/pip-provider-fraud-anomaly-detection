@@ -12,13 +12,8 @@ That is what no-fault insurance means. You do not have to sue anyone. You just f
 your insurer pays the doctors directly. This is called Personal Injury Protection, or PIP.
 That sounds simple and fair. 
 
-The problem is that some medical providers figured out they can
-exploit this system. Medicare pays every provider the same fixed rate for the same procedure in the same state. 
-Every physical medicine provider in New York gets paid exactly the same amount for a therapeutic
-exercise session. The only variable a provider controls is what they submit. A provider billing $495
-for a $28 service is not making a billing error — they are systematically inflating every charge.
-
-They bill your insurer for treatments that never happened, inflate the cost of
+The problem is that some medical providers figured out they can exploit this system. They 
+bill your insurer for treatments that never happened, inflate the cost of
 treatments that did happen, or keep patients coming back for medically unnecessary visits
 because every visit is another bill. This is called a PIP mill. A clinic organized around maximizing
 insurance payments rather than treating patients.
@@ -48,6 +43,7 @@ does not crash on a laptop.
 Why these seven states: These are the only U.S. states with mandatory or elective no-fault PIP
 laws and sufficient provider populations for statistically reliable peer group comparisons. The other
 five no-fault states were excluded due to thin provider density in the target specialties.
+
 Why Medicare data for a PIP problem: PIP insurers and Medicare share substantial overlap in
 the provider networks billing for soft-tissue injury treatment. The procedure codes, provider types,
 and billing patterns in PIP claims are the same ones visible in Medicare Part B data. Critically,
@@ -129,41 +125,55 @@ The model is set with contamination = 0.05, meaning we tell it to treat the top 
 providers as anomalous. This is a conservative threshold — it surfaces the clearest cases without
 over-flagging legitimate providers.
 
-### Step 3 — Anomaly score stability
+### Step 3 — Random seeds and why stability matters
 
-Because Isolation Forest uses randomness to construct its trees, results can
-vary slightly across runs. Stability is validated by running the model under
-two independent random seeds (42 and 99) and measuring overlap among the
-top 20 flagged providers. High overlap — 16 or more of 20 providers appearing
-under both seeds — confirms that findings reflect genuine statistical signal
-rather than an artifact of one particular random initialization.
+Isolation Forest uses randomness to build its trees. Each tree picks random features and random
+split values. This means that if you run the algorithm twice without fixing the starting conditions,
+you get slightly different results each time — different random splits, slightly different anomaly
+scores.
 
-### Step 4 — K-means clustering
+A random seed is simply the starting number that controls all the random decisions inside the
+algorithm. Think of it as the starting page of a rulebook. If you start on page 42 you get one
+sequence of random decisions. If you start on page 99 you get a different sequence. Both are
+random, but each is perfectly reproducible if you know which page you started on.
+The number 42 has no special meaning — it is a convention in data science. The point is that by
+fixing the seed, anyone who runs the same code gets the same result. That is what makes the
+analysis reproducible.
 
-K-means clustering ($k=3$) characterizes the anomalous providers by fraud typology.
-Where Isolation Forest identifies who is anomalous, clustering identifies what
-type of anomaly they represent. Three clusters emerge consistently from the data:
+### Step 4 — The three fraud typologies — K-means clustering
 
-- **Billing inflation** — elevated charge ratios with moderate service volumes,
-  consistent with systematic upcoding or fee schedule manipulation
-- **Treatment mill** — high services-per-patient with moderate charge ratios,
-  consistent with medically unnecessary treatment protocols
-- **High inflation and high volume** — extreme on both dimensions simultaneously,
-  consistent with organized fraud ring activity
+Isolation Forest tells us which providers are anomalous. K-means clustering tells us what type of
+anomaly they are — it groups providers by their billing fingerprint so we can say something
+meaningful about the pattern, not just the score.
+
+K-means works by assigning each provider to one of three clusters, minimizing the distance
+between each provider and their cluster's center point. It finds the grouping where providers are
+most similar within groups and most different between groups. Three clusters were chosen
+because three distinct fraud patterns are documented in the PIP fraud literature and visible in this
+data.
+
+Moderate risk (green): The baseline legitimate practice cluster. Inflation ratio of 2.67x is within
+the normal range. Services per patient of 2.1 is low — these providers see patients briefly. The 0%
+anomalous rate confirms Isolation Forest and K-means agree perfectly on this group.
+
+Treatment mill (amber): Moderate inflation ratio at 2.22x but services per patient of 11.2 —
+elevated above clinical norms. The billing inflation is not the story here, the treatment frequency is.
+These providers are billing a normal charge per session but billing many more sessions per patient
+than peers. This is the classic PIP mill pattern from claims examination: legitimate-looking
+per-service charges but medically implausible cumulative treatment volumes. The 18.9%
+anomalous rate is the highest of any cluster.
+
+Billing inflation (red): The inverse pattern — services per patient of only 1.76 but inflation ratio of
+6.20x. These providers see patients infrequently but inflate what they bill per visit dramatically. Fee
+schedule manipulation and upcoding live here. An average ratio of 6.2x means many individual
+providers in this cluster are well above that — top-flagged providers in this cluster will have ratios
+of 15x or higher.
 
 ![Cluster profiles](outputs/figures/03_cluster_profiles.png?raw=true) 
 *Figure 2. Normalized average feature values per cluster. Each bar group represents one
 of the four features for a given cluster. The height shows the relative level of that
 feature compared to the other clusters — revealing what makes each fraud typology distinct.*
 
-### Step 5 — OIG exclusion list cross-reference
-
-The Office of Inspector General publishes a monthly list of providers excluded
-from Medicare participation for fraud and abuse. Cross-referencing the top 50
-flagged providers against this list provides external validation: if an
-unsupervised statistical model independently surfaces providers that federal
-regulators have separately sanctioned, that convergence constitutes meaningful
-evidence that the anomaly signals are real.
 
 ---
 
@@ -196,64 +206,51 @@ simultaneously — represent the highest investigation priority.*
 
 ## Limitations
 
-**Medicare data is not PIP data.** Medicare Part B covers the elderly and
-disabled population under federal fee schedules. PIP covers automobile accident
-victims under state no-fault laws with different reimbursement structures.
-The provider networks overlap substantially, and the billing patterns observed
-in Medicare data are informative proxies for PIP billing behavior, but direct
-inference requires caution. A provider flagged as anomalous in Medicare data
-may bill differently under PIP fee schedules.
+Medicare data is not PIP data. Medicare Part B covers the elderly and disabled population under
+federal fee schedules. PIP covers automobile accident victims under state no-fault laws with
+different reimbursement structures. The provider networks overlap substantially and the billing
+patterns in Medicare data are informative proxies for PIP billing behavior, but direct inference
+requires caution. A flagged provider in Medicare data may bill differently under PIP fee schedules.
 
-**No ground truth labels exist.** The absence of a validated fraud label
-means model performance cannot be evaluated using standard classification
-metrics such as precision, recall, or AUC. Validation relies on anomaly
-score stability, cluster interpretability, and OIG cross-reference — all
-of which are appropriate for unsupervised settings but are not substitutes
-for labeled evaluation. Future work incorporating state insurance department
-fraud referral data or civil litigation records would enable supervised
-validation.
+No ground truth labels exist. The absence of a validated fraud label means model performance
+cannot be evaluated using standard classification metrics. Validation relies on anomaly score
+stability, cluster interpretability, and OIG cross-reference — all appropriate for unsupervised
+settings but not substitutes for labeled evaluation. Future work incorporating state insurance
+department fraud referral data or civil litigation records would enable supervised validation.
 
-**Peer groups are granular but incomplete.** Z-scores are computed within
-specialty × state × procedure code × place of service groups. This controls
-for the most important sources of legitimate billing variation but does not
-account for patient complexity differences, urban versus rural cost variation
-within states, or practice-specific factors such as subspecialty focus.
-A provider treating a disproportionately severe patient population may show
-elevated services-per-patient for legitimate clinical reasons.
+Peer groups are granular but incomplete. Z-scores are computed within specialty x state x
+procedure code x place of service. This controls for the most important sources of legitimate billing
+variation but does not account for patient complexity differences, urban versus rural cost variation 
+within states, or practice-specific factors. A provider treating a disproportionately severe patient
+population may show elevated services-per-patient for legitimate clinical reasons.
 
-**Hawaii peer groups are underpowered.** With 958 rows across all specialties
-in Hawaii, many peer groups contain fewer than five members — insufficient for
-reliable z-score computation. Hawaii results are retained in the dataset with
-a low-confidence flag but should be interpreted with caution and are excluded
-from the primary anomaly detection analysis.
-
+Hawaii peer groups are underpowered. With 958 rows across all specialties, many Hawaii peer
+groups contain fewer than five members — insufficient for reliable z-score computation. Hawaii
+results are retained with a low-confidence flag but excluded from the primary anomaly detection
+analysis.
 ---
 
-## Domain context
+## Domain context — why this project is different
 
-This analysis was developed by a credentialed no-fault claims examiner with
-nine years of experience in New York PIP claims adjudication, including
-complex coverage determinations, SIU referral assessment, and for-hire vehicle
-fraud investigation. The feature engineering decisions — the specific procedure
-codes selected, the clinical benchmarks used for services-per-patient thresholds,
-the identification of Physical Medicine and Chiropractic as the highest-risk
-specialty categories — reflect operational knowledge of how PIP fraud manifests
-in actual claim files, not arbitrary analytical choices.
+This analysis was developed by a credentialed no-fault claims examiner with nine years of
+experience in New York PIP claims adjudication, including complex coverage determinations, SIU
+referral assessment, and for-hire vehicle fraud investigation. The feature engineering decisions —
+the specific procedure codes selected, the clinical benchmarks used for services-per-patient
+thresholds, the identification of Physical Medicine and Chiropractic as the highest-risk specialty
+categories — reflect operational knowledge of how PIP fraud manifests in actual claim files, not
+arbitrary analytical choices.
 
-The billing patterns flagged by this model are not statistical abstractions.
-A physical medicine provider billing 17 times the Medicare rate for therapeutic
-exercises, averaging 34 sessions per patient, with 84% of total billing volume
-concentrated in a single procedure code, matches the precise profile of a PIP
-mill as it presents in claims examination: medically implausible treatment
-duration, inflated charges submitted to the no-fault insurer, and a narrow
-service menu consistent with a clinic organized around maximizing PIP payments
-rather than providing individualized care.
+The billing patterns flagged by this model are not statistical abstractions. A physical medicine
+provider billing 17 times the Medicare rate for therapeutic exercises, averaging 34 sessions per
+patient, with 84% of total billing volume concentrated in a single procedure code, matches the
+precise profile of a PIP mill as it presents in claims examination: medically implausible treatment
+duration, inflated charges submitted to the no-fault insurer, and a narrow service menu consistent
+with a clinic organized around maximizing PIP payments rather than providing individualized care.
 
-The value of domain expertise in data science is not the ability to build
-more sophisticated models — it is the ability to ask the right questions,
-select the right features, and interpret statistical output in the context
-of how the underlying system actually operates. This project is an attempt
-to demonstrate that combination.
+The value of domain expertise in data science is not the ability to build more sophisticated models
+— it is the ability to ask the right questions, select the right features, and interpret statistical output
+in the context of how the underlying system actually operates. This project is an attempt to
+demonstrate that combination.
 
 ---
 

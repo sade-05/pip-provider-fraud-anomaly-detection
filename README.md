@@ -4,61 +4,60 @@
 
 ---
 
-## The Problem
+## What this project is about
 
-Personal Injury Protection (PIP) insurance operates on a no-fault basis — your own insurer
-pays your medical bills after an automobile accident regardless of who caused the collision.
-This automatic payment mechanism, while designed to speed recovery for accident victims,
-creates a structural vulnerability: organized fraud rings exploit it by steering claimants
-to complicit medical providers who bill for unnecessary, inflated, or fabricated treatment.
+Every time you get into a car accident in New York, New Jersey, Florida, or a handful of other
+states, your own insurance company pays your medical bills, no matter who caused the crash.
+That is what no-fault insurance means. You do not have to sue anyone. You just file a claim and
+your insurer pays the doctors directly. This is called Personal Injury Protection, or PIP.
+That sounds simple and fair. 
 
-The challenge for detecting provider-level fraud is a fundamental one — **there are no labels.**
-No dataset exists that systematically marks which clinics are PIP mills and which are
-legitimate practices. Supervised machine learning, which learns from labeled examples,
-cannot be applied. What can be applied is the structural property that makes Medicare billing
-data uniquely suited to this problem: **Medicare's allowed payment rate is fixed per procedure
-code, per geography.** Every physical medicine provider in New York receives the same
-reimbursement for a therapeutic exercise session. The only variable any provider controls
-is what they choose to submit.
+The problem is that some medical providers figured out they can
+exploit this system. Medicare pays every provider the same fixed rate for the same procedure in the same state. 
+Every physical medicine provider in New York gets paid exactly the same amount for a therapeutic
+exercise session. The only variable a provider controls is what they submit. A provider billing $495
+for a $28 service is not making a billing error — they are systematically inflating every charge.
 
-When a provider submits $495 for a service Medicare reimburses at $28 — a billing inflation
-ratio of 17.6x — while averaging 34 treatment sessions per patient for soft-tissue injuries
-where the clinical norm is 8 to 14, the pattern cannot be explained by legitimate practice
-variation. This project formalizes that intuition into a statistically rigorous,
-reproducible anomaly detection pipeline.
+They bill your insurer for treatments that never happened, inflate the cost of
+treatments that did happen, or keep patients coming back for medically unnecessary visits
+because every visit is another bill. This is called a PIP mill. A clinic organized around maximizing
+insurance payments rather than treating patients.
+
+The question this project asks is: can we find these providers using only publicly available billing
+data, without anyone telling us in advance which ones are fraudulent?
 
 ---
 
-## Data
+## The data and why it works
 
-**Source:** CMS Medicare Fee-for-Service Provider Utilization and Payment Data,
-Physician and Other Practitioners by Provider and Service (2023 release).
-Publicly available at [data.cms.gov](https://data.cms.gov). No registration required.
+The Centers for Medicare and Medicaid Services — CMS — publishes every year exactly how
+much each doctor and clinic in America billed Medicare and how much Medicare actually paid.
+The entire file is free, publicly available, and covers over nine million provider-procedure
+combinations nationally. No registration is required to download it.
+We filter the full nine million row dataset down to 85,862 rows covering 38,816 unique providers
+across seven no-fault states — New York, New Jersey, Michigan, Florida, Massachusetts,
+Pennsylvania, and Hawaii — and seven soft-tissue injury specialties including Physical Medicine
+and Rehabilitation, Chiropractic, Neurology, Orthopedic Surgery, Internal Medicine, and Pain
+Management.
 
-**Scope:** Filtered from 9.7 million raw records to 85,862 rows representing
-38,816 unique providers across seven no-fault PIP states — New York, New Jersey,
-Michigan, Florida, Massachusetts, Pennsylvania, and Hawaii — and seven soft-tissue
-injury specialties including Physical Medicine and Rehabilitation, Chiropractic,
-Neurology, Orthopedic Surgery, Internal Medicine, and Pain Management.
+This filtering happens using DuckDB — a tool that runs standard SQL queries directly on the raw
+3.5 GB CSV file without loading it into memory. The same SQL language used in claims systems.
+The 9.7 million row file never enters RAM — only the filtered results do. This is why the project
+does not crash on a laptop.
 
-**Why these states:** These are the only U.S. states with mandatory or elective
-no-fault Personal Injury Protection laws and sufficient provider populations to
-support statistically reliable peer group comparisons. The remaining five no-fault
-states were excluded due to insufficient provider density in the target specialty
-and procedure code combinations.
+Why these seven states: These are the only U.S. states with mandatory or elective no-fault PIP
+laws and sufficient provider populations for statistically reliable peer group comparisons. The other
+five no-fault states were excluded due to thin provider density in the target specialties.
+Why Medicare data for a PIP problem: PIP insurers and Medicare share substantial overlap in
+the provider networks billing for soft-tissue injury treatment. The procedure codes, provider types,
+and billing patterns in PIP claims are the same ones visible in Medicare Part B data. Critically,
+Medicare's fixed reimbursement rates create the analytical foundation that makes peer
+comparison possible — a structural property private insurer data, which uses negotiated rates,
+does not provide.
 
-**Why Medicare data for a PIP problem:** PIP insurers and Medicare share a
-substantial overlap in the provider networks billing for soft-tissue injury treatment.
-The procedure codes, provider types, and billing patterns that appear in PIP claims
-are the same ones visible in Medicare Part B data. Critically, Medicare's fixed
-reimbursement rates create the analytical foundation that makes peer comparison
-possible — a structural property that private insurer data, which involves negotiated
-rates, does not provide.
-
-**A note on Hawaii:** Hawaii providers are retained in the dataset but excluded from
-modeling. With 958 rows across all specialties, peer groups in Hawaii are too small
-(fewer than 5 members in many cases) to produce statistically reliable z-scores.
-All Hawaii results are flagged as low-confidence and reported separately.
+Hawaii note: Hawaii providers are retained but excluded from modeling. With only 958 rows
+across all specialties, peer groups are too small to produce reliable z-scores. All Hawaii results are
+flagged as low-confidence.
 
 ![Billing inflation ratio by specialty](outputs/figures/01_billing_inflation_by_specialty.png)
 *Figure 1. Distribution of billing inflation ratios by specialty across 85,862 provider-procedure
@@ -68,65 +67,67 @@ consistent with their documented role in PIP mill billing.*
 
 ---
 
-## Methods
+## The three features
 
 ### Step 1 — Feature engineering
 
-Three features are engineered from the raw CMS billing columns. Each captures
-a distinct dimension of anomalous behavior.
+Everything in the model is built from three numbers engineered from the raw CMS billing columns.
+Each one captures a different dimension of suspicious behavior. None of them require a fraud
+label to compute — they come directly from the billing data itself.
 
-**Billing inflation ratio** (charge-to-payment ratio): The provider's average
-submitted charge divided by the Medicare payment amount for the same service.
-Medicare payment is fixed per procedure code and geography — it is the same for
-every provider billing that code in that state. Submitted charge is the only
-variable the provider controls. A ratio above 3x is elevated; above 8x is
-anomalous; above 15x is consistent with organized billing fraud in PIP contexts.
+Feature 1 — Billing inflation ratio: The provider's average submitted charge divided by what
+Medicare actually paid for that same service. Medicare payment is fixed per procedure code and
+geography. Submitted charge is the only number the provider controls. A legitimate provider might 
+bill 1.5x to 3x the Medicare rate to account for uninsured patients and administrative overhead. A
+ratio above 8x is anomalous. Above 15x is consistent with organized billing fraud. This is the core
+signal because the fixed denominator removes all legitimate sources of variation — you are only
+seeing what the provider chose to charge.
 
-**Services per patient:** Total service lines billed divided by the distinct
-beneficiary count. This captures medically implausible treatment frequency.
-For therapeutic exercise (CPT 97110) and chiropractic manipulation (CPT 98941),
-evidence-based treatment guidelines support 8 to 14 sessions for acute soft-tissue
-injuries. A provider averaging 30 to 50 sessions per patient for these conditions
-is not treating a more severely injured population — the clinical evidence does
-not support that explanation.
+Feature 2 — Services per patient: Total services billed divided by the number of distinct patients.
+For soft-tissue injuries — the kind that follow car accidents — clinical guidelines support roughly 8
+to 14 sessions. A provider averaging 34 sessions per patient for the same injuries is not treating a
+more severely injured population. The clinical evidence does not support that explanation. What it
+does support is a billing mill keeping patients in treatment far beyond what is medically warranted.
 
-**Peer group z-score:** How many standard deviations above the mean a provider's
-billing inflation ratio falls, computed within a granular peer group defined by
-specialty, state, procedure code, and place of service. A physical medicine provider
-in New York billing CPT 97110 in an office setting is compared only to other
-physical medicine providers in New York billing CPT 97110 in an office setting.
-This controls for legitimate variation between specialties and geographies —
-a neurosurgeon's billing profile is not a valid comparison for a chiropractor.
-Peer groups with fewer than five members receive a z-score of zero and a
-low-confidence flag.
+Feature 3 — Peer group z-score: This is where the statistics come in. A z-score measures how
+far a value sits from the average of its group, expressed in standard deviations. The peer group is
+strict: same specialty, same state, same procedure code, same place of service. A physical
+medicine provider in New York billing CPT 97110 in an office setting is compared only to other
+physical medicine providers in New York billing CPT 97110 in an office setting — not to surgeons,
+not to providers in Texas.
 
-### Step 2 — Isolation Forest
+z = (x - mean) / standard deviation
+x = provider billing ratio | mean = peer group average | standard deviation = spread of the peer group
 
-Isolation Forest (Liu, Ting, and Zhou, 2008) detects anomalies by measuring
-how quickly each provider can be separated from the rest using randomly
-constructed binary decision trees. The core insight is that anomalous data
-points are both few in number and different in character from normal points —
-they require fewer random splits to isolate because they answer questions
-differently from the crowd.
+A z-score of 0 means exactly average. A z-score of 2 means in the top 2.3% of peers. A z-score of
+3 means in the top 0.1% — three standard deviations above the mean is a level of deviation that
+occurs by chance less than one time in a thousand. When a provider sits that far from their peers
+on billing inflation, chance is not a convincing explanation.
 
-Formally, the anomaly score for provider *x* is:
+### Step 2 — How Isolation Forest works
 
-$$s(x, n) = 2^{-\frac{\bar{h}(x)}{c(n)}}$$
+Isolation Forest is the algorithm that scores every provider by how anomalous they are. It requires
+no fraud labels — it finds anomalies purely by measuring how different a provider looks from the
+rest of the group. The intuition is elegant. Imagine you have a room full of 38,000 providers and you are blindfolded.
+You randomly pick a dividing line through the room — "is your billing inflation ratio above 4.7?" —
+and split everyone into two groups. Then you pick another random line and split again. You keep
+dividing until each provider stands alone in their own section.
+The providers sitting far from the crowd — billing 17 times the Medicare rate, averaging 34
+sessions per patient — get separated very quickly. After just a few random questions they are
+already alone because they answer every question differently from everyone else. The providers
+buried in the normal cluster take many more questions to separate because they are surrounded
+by similar providers on all sides.
+That is exactly what Isolation Forest does, except instead of one person asking questions it builds
+100 randomly constructed decision trees simultaneously, and averages the results. 
+The anomaly score is:
 
-where $\bar{h}(x)$ is the average path length across 100 trees and $c(n)$ is
-the expected path length of an unsuccessful Binary Search Tree search,
-used as a normalizing constant:
+s(x, n) = 2 ^ ( -average_path_length / c(n) )
+average_path_length = how many splits to isolate this provider across 100 trees | c(n) = normalizing constant
+| Score near 1.0 = anomalous | Score near 0.5 = normal
 
-$$c(n) = 2H(n-1) - \frac{2(n-1)}{n}$$
-
-Scores approaching 1.0 indicate short path lengths and high anomaly probability.
-Scores near 0.5 are indistinguishable from normal. The model is configured with
-`contamination=0.05`, treating the most isolated 5% of providers as anomalous —
-a conservative threshold that surfaces the clearest cases without over-flagging.
-
-No fraud labels are required. The algorithm finds statistical isolation, not
-deviation from a labeled definition of fraud. This is the methodologically
-appropriate choice when ground truth is unavailable.
+The model is set with contamination = 0.05, meaning we tell it to treat the top 5% most isolated
+providers as anomalous. This is a conservative threshold — it surfaces the clearest cases without
+over-flagging legitimate providers.
 
 ### Step 3 — Anomaly score stability
 

@@ -140,7 +140,7 @@ The number 42 has no special meaning — it is a convention in data science. The
 fixing the seed, anyone who runs the same code gets the same result. That is what makes the
 analysis reproducible.
 
-### Step 4 — The three fraud typologies — K-means clustering
+### Step 4 — K-means clustering ( The three fraud typologies)
 
 Isolation Forest tells us which providers are anomalous. K-means clustering tells us what type of
 anomaly they are — it groups providers by their billing fingerprint so we can say something

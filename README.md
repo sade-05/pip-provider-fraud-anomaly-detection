@@ -60,11 +60,11 @@ At 3, they're in the top 0.1%. By chance alone, you'd expect one provider in a t
 
 ### Step 2 — How Isolation Forest Works
 
-Isolation Forest is the algorithm that scores every provider by how anomalous they are. It requires no fraud labels — it finds anomalies purely by measuring how different a provider looks from the rest of the group.
+Isolation Forest is the algorithm that scores every provider by how anomalous they are. It requires no fraud labels becasue it finds anomalies purely by measuring how different a provider looks from the rest of the group.
 
-The intuition is elegant. Imagine you have a room full of 38,000 providers and you are blindfolded. You randomly pick a dividing line through the room — "is your billing inflation ratio above 4.7?" — and split everyone into two groups. Then you pick another random line and split again. You keep dividing until each provider stands alone in their own section.
+To provide a clearer picture, imagine you have a room full of 38,000 providers and you are blindfolded. You randomly pick a dividing line through the room and ask: "is your billing inflation ratio above 4.7?" and split everyone into two groups. Then you pick another random line and split again. You keep dividing until each provider stands alone in their own section.
 
-The providers sitting far from the crowd — billing 17 times the Medicare rate, averaging 34 sessions per patient — get separated very quickly. After just a few random questions they are already alone because they answer every question differently from everyone else. The providers buried in the normal cluster take many more questions to separate because they are surrounded by similar providers on all sides.
+The providers billing 17 times the Medicare rate and averaging 34 sessions per patient get separated very quickly. After just a few random questions they are already alone because they answer every question differently from everyone else. The providers buried in the normal cluster take many more questions to separate because they are surrounded by similar providers on all sides.
 
 That is exactly what Isolation Forest does, except instead of one person asking questions it builds 100 randomly constructed decision trees simultaneously, and averages the results.
 
@@ -89,13 +89,13 @@ Isolation Forest uses randomness to build its trees. Each tree picks random feat
 
 A random seed is simply the starting number that controls all the random decisions inside the algorithm. Think of it as the starting page of a rulebook. If you start on page 42 you get one sequence of random decisions. If you start on page 99 you get a different sequence. Both are random, but each is perfectly reproducible if you know which page you started on.
 
-The number 42 has no special meaning — it is a convention in data science. The point is that by fixing the seed, anyone who runs the same code gets the same result. That is what makes the analysis reproducible.
+The number 42 has no special meaning. The point is that by fixing the seed, anyone who runs the same code gets the same result. That is what makes the analysis reproducible.
 
 ---
 
 ### Step 4 — K-Means Clustering (The Three Fraud Typologies)
 
-Isolation Forest tells us *which* providers are anomalous. K-means clustering tells us *what type* of anomaly they are — it groups providers by their billing fingerprint so we can say something meaningful about the pattern, not just the score.
+Isolation Forest tells us *which* providers are anomalous. K-means clustering tells us *what type* of anomaly they are. It groups providers by their billing fingerprint so that something potentially meaningful about the pattern, not just the score, could be discovered. 
 
 K-means works by assigning each provider to one of three clusters, minimizing the distance between each provider and their cluster's center point. It finds the grouping where providers are most similar within groups and most different between groups. Three clusters were chosen because three distinct fraud patterns are documented in the PIP fraud literature and visible in this data.
 
@@ -118,11 +118,15 @@ K-means works by assigning each provider to one of three clusters, minimizing th
 
 ## Key Findings
 
-- **6.1% of providers** (2,377 of 38,816) submit charges exceeding 10 times the Medicare payment rate for the same procedure — a billing inflation ratio that cannot be explained by legitimate practice economics
-- **Three distinct fraud typologies** emerge from cluster analysis, each requiring a different investigative and remediation approach
-- **Anomaly scores are highly stable** across independent random seeds, confirming that top-flagged providers reflect genuine statistical outliers rather than sampling artifacts
-- **New York and New Jersey dominate the top-flagged provider list**, consistent with both states' documented PIP fraud histories and the concentration of organized fraud rings in the New York metro area
-- **Individual physicians, not organizations, constitute the majority of top-flagged providers** in this Medicare dataset — a finding that diverges from the conventional PIP mill narrative, which emphasizes clinic-level organized fraud, and warrants further investigation
+- **1 in 16 providers is billing at more than 10 times what Medicare pays.** Out of 38,816 providers analyzed, 2,377 of them — about 6 out of every 100 — are submitting charges that are more than 10 times the amount Medicare actually pays for the exact same service. To put that in dollar terms: Medicare pays $28 for a therapeutic exercise session. A provider with a 10x ratio is billing $280 for that same session. At 17x they are billing $476. There is no legitimate business reason to submit charges that far above what any insurer — Medicare or a no-fault carrier — will actually pay. The only reason to do it is if you are submitting those inflated charges somewhere else, like a PIP insurer, where the billing gets paid at face value before anyone looks closely.
+  
+- **The fraud does not all look the same — there are three distinct patterns.** When we grouped the anomalous providers by their billing fingerprint, three clearly different profiles emerged. Some providers inflate what they charge per visit but do not see patients excessively — they are manipulating the fee schedule. Some providers charge a normal amount per visit but keep patients coming back far more often than is medically necessary — that is the treatment mill pattern. And some providers are extreme on both at the same time. Each pattern works differently and would need a different response from an investigator. Finding these three groups rather than one generic "fraud" group is more useful because it tells you what you are actually dealing with.
+  
+- **The results hold up when we double-check them** Because the model uses some randomness when it runs, we ran it twice with different starting conditions — like reshuffling a deck of cards before dealing. If the same providers kept showing up as the most suspicious under both runs, that tells us the findings are real and not just a coincidence of one particular shuffle. That is what happened. The top flagged providers were consistent across both runs, which means the model is picking up on genuine billing anomalies rather than statistical noise.
+  
+- **New York and New Jersey have the most suspicious providers.**. The providers with the highest anomaly scores are concentrated in New York and New Jersey. This is not surprising — both states have mandatory no-fault PIP laws, high claim volumes, and well-documented histories of organized fraud rings operating in the New York metro area. The fact that the data independently points to the same geography that investigators already know is a hotspot adds credibility to the findings. The model did not know that going in — it found it from the billing patterns alone.
+  
+- **Individual doctors are being flagged more than clinics — and that is unexpected.** The conventional story about PIP fraud is that it is driven by organized clinics and LLCs — the classic PIP mill model of a storefront operation cycling accident victims through unnecessary treatment. But in this Medicare dataset the majority of the most anomalous providers are individual physicians, not organizations. That is a genuinely interesting and unexpected finding. It could mean that solo practitioners are gaming the Medicare billing system in ways that organized clinics are not, or it could reflect something specific about how Medicare data captures billing differently than PIP data would. Either way it is worth investigating further rather than assuming all PIP fraud looks like the clinic model.
 
 ![Provider anomaly map](outputs/figures/02_anomaly_scatter.png)
 *Figure 3. Billing inflation ratio vs median services per patient for 38,816 providers. Each point is one provider, colored by K-means cluster. Black dots mark the top 2% most anomalous providers by Isolation Forest score. Green dotted lines mark legitimate practice thresholds. Providers in the top-right quadrant — high inflation and high treatment volume simultaneously — represent the highest investigation priority.*
@@ -131,13 +135,13 @@ K-means works by assigning each provider to one of three clusters, minimizing th
 
 ## Limitations
 
-**Medicare data is not PIP data.** Medicare Part B covers the elderly and disabled population under federal fee schedules. PIP covers automobile accident victims under state no-fault laws with different reimbursement structures. The provider networks overlap substantially and the billing patterns in Medicare data are informative proxies for PIP billing behavior, but direct inference requires caution. A flagged provider in Medicare data may bill differently under PIP fee schedules.
+**Medicare data is not the same as PIP data.** Medicare pays for healthcare for people who are elderly or disabled. PIP pays for healthcare for people hurt in car accidents. These are different patient populations with different insurance rules and different payment rates. The same doctors who treat car accident victims often also treat Medicare patients, so the billing patterns overlap and give us useful information — but a doctor flagged as suspicious in Medicare data might bill completely differently when treating car accident victims under PIP. We cannot assume the two are identical.
 
-**No ground truth labels exist.** The absence of a validated fraud label means model performance cannot be evaluated using standard classification metrics. Validation relies on anomaly score stability, cluster interpretability, and OIG cross-reference — all appropriate for unsupervised settings but not substitutes for labeled evaluation. Future work incorporating state insurance department fraud referral data or civil litigation records would enable supervised validation.
+**We have no way to confirm who is actually committing fraud.** Most machine learning models learn from examples — you show the model thousands of cases labeled "fraud" and "not fraud" and it learns the difference. We do not have those labels here. Nobody has gone through and marked which providers are actually fraudulent. So we cannot calculate the standard measures of how well a model is working — like what percentage of our flags are correct. Instead we check whether the model gives consistent results when run twice under different conditions, and we ask whether the flagged providers match what fraud looks like based on claims experience. These are reasonable approaches for this type of analysis but they are not as definitive as having confirmed fraud cases to compare against. Ideally future work would bring in actual fraud referral records from state insurance regulators to properly test the model.
 
-**Peer groups are granular but incomplete.** Z-scores are computed within specialty × state × procedure code × place of service. This controls for the most important sources of legitimate billing variation but does not account for patient complexity differences, urban versus rural cost variation within states, or practice-specific factors. A provider treating a disproportionately severe patient population may show elevated services-per-patient for legitimate clinical reasons.
+**We compare providers to their peers but we cannot account for everything.** When we compute z-scores we compare each provider only to others in the same specialty, same state, same procedure code, and same setting. This removes most legitimate reasons for billing differences. But it does not remove everything. A provider who sees unusually severe patients might legitimately need more treatment sessions per patient than their peers — that would show up as a high services-per-patient score even though nothing fraudulent is happening. We cannot see patient severity in this data, so we cannot rule that out. The flags are strong statistical signals but they are not proof.
 
-**Hawaii peer groups are underpowered.** With 958 rows across all specialties, many Hawaii peer groups contain fewer than five members — insufficient for reliable z-score computation. Hawaii results are retained with a low-confidence flag but excluded from the primary anomaly detection analysis.
+**Hawaii does not have enough providers for reliable comparisons.** Hawaii has fewer than 1,000 rows across all specialties combined. When you divide that across multiple specialties, states, procedure codes, and settings, many of the peer groups end up with fewer than five providers in them. You cannot meaningfully calculate how unusual someone is when there are only two or three people to compare them to — the math becomes unreliable. So we kept Hawaii in the dataset and marked those results as low confidence, but we did not include Hawaii in the main anomaly detection analysis.
 
 ---
 

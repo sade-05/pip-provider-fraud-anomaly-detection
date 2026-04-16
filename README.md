@@ -16,7 +16,7 @@ The question this project asks is: can we find these providers using only public
 
 ## The Data and Why It Works
 
-The Centers for Medicare and Medicaid Services (CMS) publishes every year exactly how much each doctor and clinic in America billed Medicare and how much Medicare actually paid. The entire file is free, publicly available, and covers over nine million provider-procedure combinations nationally. No registration is required to download it.
+The Centers for Medicare and Medicaid Services (CMS) publishes every year exactly how much each doctor and clinic in America billed Medicare and how much Medicare actually paid. The entire file (Medicare Part B data) is free, publicly available, and covers over nine million provider-procedure combinations nationally. No registration is required to download it.
 
 A nine million row dataset was filtered down to 85,862 rows covering 38,816 unique providers across seven no-fault states: New York, New Jersey, Michigan, Florida, Massachusetts, Pennsylvania, and Hawaii and seven soft-tissue injury specialties including Physical Medicine and Rehabilitation, Chiropractic, Neurology, Orthopedic Surgery, Internal Medicine, and Pain Management.
 
@@ -28,18 +28,18 @@ This filtering happens using DuckDB, a tool that runs standard SQL queries direc
 
 **Hawaii note:** Hawaii providers are retained but excluded from modeling. With only 958 rows across all specialties, peer groups are too small to produce reliable z-scores. All Hawaii results are flagged as low-confidence.
 
-![Billing inflation ratio by specialty](outputs/figures/01_billing_inflation_by_specialty.png)
-*Figure 1. Distribution of billing inflation ratios by specialty across 85,862 provider-procedure combinations. The green dotted line marks the legitimate upper bound (~3x). The red dashed line marks the anomaly threshold (8x). Physical Medicine and Chiropractic show the heaviest right tails — consistent with their documented role in PIP mill billing.*
-
 ---
 
 ## The Three Features
 
 ### Step 1 — Feature Engineering
 
-Everything in the model is built from three numbers engineered from the raw CMS billing columns. Each one captures a different dimension of suspicious behavior. None of them require a fraud label to compute — they come directly from the billing data itself.
+Everything in the model is built from three numbers engineered from the raw CMS billing columns. Each one captures a different dimension of suspicious behavior. None of them require a fraud label to compute becasue they come directly from the billing data itself.
 
-**Feature 1 — Billing inflation ratio:** The provider's average submitted charge divided by what Medicare actually paid for that same service. Medicare payment is fixed per procedure code and geography. Submitted charge is the only number the provider controls. A legitimate provider might bill 1.5x to 3x the Medicare rate to account for uninsured patients and administrative overhead. A ratio above 8x is anomalous. Above 15x is consistent with organized billing fraud. This is the core signal because the fixed denominator removes all legitimate sources of variation — you are only seeing what the provider chose to charge.
+**Feature 1 — Billing inflation ratio:** Medicare's payment doesn't move. The provider's submitted charge does. That ratio, i.e., what they billed versus what Medicare paid shows us pure provider behavior. Normal range: 1.5x to 3x. Red flag: above 8x. Fraud indicator: above 15x. The fixed denominator (Medicare's payment) gives us a measure of overcharge.
+
+![Billing inflation ratio by specialty](outputs/figures/01_billing_inflation_by_specialty.png)
+*Figure 1. Distribution of billing inflation ratios by specialty across 85,862 provider-procedure combinations. The green dotted line marks the legitimate upper bound (~3x). The red dashed line marks the anomaly threshold (8x). Physical Medicine and Chiropractic show the heaviest right tails, consistent with their documented role in PIP mill billing. Those tails represent the extreme-billing providers within those specialties.
 
 **Feature 2 — Services per patient:** Total services billed divided by the number of distinct patients. For soft-tissue injuries — the kind that follow car accidents — clinical guidelines support roughly 8 to 14 sessions. A provider averaging 34 sessions per patient for the same injuries is not treating a more severely injured population. The clinical evidence does not support that explanation. What it does support is a billing mill keeping patients in treatment far beyond what is medically warranted.
 

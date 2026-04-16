@@ -8,7 +8,7 @@
 
 Every time you get into a car accident in New York, New Jersey, Florida, or a handful of other states, your own insurance company pays your medical bills, no matter who caused the crash. That is what no-fault insurance means. You do not have to sue anyone. You just file a claim and your insurer pays the doctors directly. This is called Personal Injury Protection, or PIP.
 
-The problem is that some medical providers figured out they can exploit this system. They bill your insurer for treatments that never happened, inflate the cost of treatments that did happen, or keep patients coming back for medically unnecessary visits because every visit is another bill. This is called a PIP mill. A clinic organized around maximizing insurance payments rather than treating patients.
+The problem is that some medical providers figured out they can exploit this system. They bill your insurer for treatments that never happened, inflate the cost of treatments that did happen, or keep patients coming back for medically unnecessary visits because every visit is another bill. This is called a PIP mill, a clinic organized around maximizing insurance payments rather than treating patients.
 
 The question this project asks is: can we find these providers using only publicly available billing data, without anyone telling us in advance which ones are fraudulent?
 
@@ -60,7 +60,7 @@ At 3, they're in the top 0.1%. By chance alone, you'd expect one provider in a t
 
 ### Step 2 — How Isolation Forest Works
 
-Isolation Forest is the algorithm that scores every provider by how anomalous they are. It requires no fraud labels becasue it finds anomalies purely by measuring how different a provider looks from the rest of the group.
+Isolation Forest is the tool that scores every provider by how suspicious their billing looks. The reason it is useful here is that it does not need anyone to tell it in advance what fraud looks like. It figures it out on its own by asking one simple question about every provider: how different do you look from everyone else?
 
 To provide a clearer picture, imagine you have a room full of 38,000 providers and you are blindfolded. You randomly pick a dividing line through the room and ask: "is your billing inflation ratio above 4.7?" and split everyone into two groups. Then you pick another random line and split again. You keep dividing until each provider stands alone in their own section.
 

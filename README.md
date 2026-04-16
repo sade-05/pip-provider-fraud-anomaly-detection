@@ -8,8 +8,6 @@
 
 Every time you get into a car accident in New York, New Jersey, Florida, or a handful of other states, your own insurance company pays your medical bills, no matter who caused the crash. That is what no-fault insurance means. You do not have to sue anyone. You just file a claim and your insurer pays the doctors directly. This is called Personal Injury Protection, or PIP.
 
-That sounds simple and fair.
-
 The problem is that some medical providers figured out they can exploit this system. They bill your insurer for treatments that never happened, inflate the cost of treatments that did happen, or keep patients coming back for medically unnecessary visits because every visit is another bill. This is called a PIP mill. A clinic organized around maximizing insurance payments rather than treating patients.
 
 The question this project asks is: can we find these providers using only publicly available billing data, without anyone telling us in advance which ones are fraudulent?
@@ -18,15 +16,15 @@ The question this project asks is: can we find these providers using only public
 
 ## The Data and Why It Works
 
-The Centers for Medicare and Medicaid Services — CMS — publishes every year exactly how much each doctor and clinic in America billed Medicare and how much Medicare actually paid. The entire file is free, publicly available, and covers over nine million provider-procedure combinations nationally. No registration is required to download it.
+The Centers for Medicare and Medicaid Services (CMS) publishes every year exactly how much each doctor and clinic in America billed Medicare and how much Medicare actually paid. The entire file is free, publicly available, and covers over nine million provider-procedure combinations nationally. No registration is required to download it.
 
-We filter the full nine million row dataset down to 85,862 rows covering 38,816 unique providers across seven no-fault states — New York, New Jersey, Michigan, Florida, Massachusetts, Pennsylvania, and Hawaii — and seven soft-tissue injury specialties including Physical Medicine and Rehabilitation, Chiropractic, Neurology, Orthopedic Surgery, Internal Medicine, and Pain Management.
+A nine million row dataset was filtered down to 85,862 rows covering 38,816 unique providers across seven no-fault states: New York, New Jersey, Michigan, Florida, Massachusetts, Pennsylvania, and Hawaii and seven soft-tissue injury specialties including Physical Medicine and Rehabilitation, Chiropractic, Neurology, Orthopedic Surgery, Internal Medicine, and Pain Management.
 
-This filtering happens using DuckDB — a tool that runs standard SQL queries directly on the raw 3.5 GB CSV file without loading it into memory. The same SQL language used in claims systems. The 9.7 million row file never enters RAM — only the filtered results do. This is why the project does not crash on a laptop.
+This filtering happens using DuckDB, a tool that runs standard SQL queries directly on the raw 3.5 GB CSV file without loading it into memory. The same SQL language used in claims systems. The 9.7 million row file never enters RAM, only the filtered results do. This is why the project does not crash on a laptop.
 
-**Why these seven states:** These are the only U.S. states with mandatory or elective no-fault PIP laws and sufficient provider populations for statistically reliable peer group comparisons. The other five no-fault states were excluded due to thin provider density in the target specialties.
+**Why these seven states:** We limited the analysis to these U.S. states, which have no-fault PIP laws and enough providers in the relevant specialties to draw statistically sound comparisons. 
 
-**Why Medicare data for a PIP problem:** PIP insurers and Medicare share substantial overlap in the provider networks billing for soft-tissue injury treatment. The procedure codes, provider types, and billing patterns in PIP claims are the same ones visible in Medicare Part B data. Critically, Medicare's fixed reimbursement rates create the analytical foundation that makes peer comparison possible — a structural property private insurer data, which uses negotiated rates, does not provide.
+**Why Medicare data for a PIP problem:** PIP and Medicare draw from largely the same pool of providers billing for soft-tissue injuries, using the same procedure codes and billing patterns, both visible in Medicare Part B data. What makes Medicare especially valuable here is its fixed reimbursement rates, which are similarly fixed under no-fault PIP.
 
 **Hawaii note:** Hawaii providers are retained but excluded from modeling. With only 958 rows across all specialties, peer groups are too small to produce reliable z-scores. All Hawaii results are flagged as low-confidence.
 

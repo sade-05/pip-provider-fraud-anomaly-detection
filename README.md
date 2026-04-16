@@ -39,7 +39,7 @@ Everything in the model is built from three numbers engineered from the raw CMS 
 **Feature 1: Billing inflation ratio:** Medicare pays what it pays (a fixed amount based on procedure and location). The provider bills whatever it wants. That ratio, i.e., what they billed versus what Medicare paid shows us pure provider behavior. Normal range: 1.5x to 3x. Red flag: above 8x. Fraud indicator: above 15x. The fixed denominator (Medicare's payment) gives us a measure of overcharge.
 
 ![Billing inflation ratio by specialty](outputs/figures/01_billing_inflation_by_specialty.png)
-**Figure 1.** Distribution of billing inflation ratios by specialty across 85,862 provider-procedure combinations. The green dotted line marks the legitimate upper bound (~3x). The red dashed line marks the anomaly threshold (8x). Physical Medicine and Chiropractic show the heaviest right tails, consistent with their documented role in PIP mill billing. Those tails represent the extreme-billing providers within those specialties.
+*Figure 1. Distribution of billing inflation ratios by specialty across 85,862 provider-procedure combinations. The green dotted line marks the legitimate upper bound (~3x). The red dashed line marks the anomaly threshold (8x). Physical Medicine and Chiropractic show the heaviest right tails, consistent with their documented role in PIP mill billing. Those tails represent the extreme-billing providers within those specialties.*
 
 **Feature 2: Services per patient:** For soft-tissue injuries from car accidents, clinical guidelines support somewhere between 8 and 14 treatment sessions. A provider averaging 34 sessions per patient is not treating a more severely injured population. It's a billing mill keeping patients in treatment far beyond what is medically warranted.
 
@@ -52,7 +52,7 @@ where $x$ = provider billing ratio, $\mu$ = peer group mean, $\sigma$ = peer gro
 
 ![Billing inflation ratio by specialty](outputs/figures/04_zscore_distribution.png)
 
-**Figure 2.** Peer group z-score distribution - billing inflation ratio. Z-scores measure how far a provider sits from the average. At 0, they're exactly typical. At 2, they're billing higher than 97.7% of peers. At 3, they're in the top 0.1%. By chance alone, you'd expect one provider in a thousand to land here.
+*Figure 2. Peer group z-score distribution - billing inflation ratio. Z-scores measure how far a provider sits from the average. At 0, they're exactly typical. At 2, they're billing higher than 97.7% of peers. At 3, they're in the top 0.1%. By chance alone, you'd expect one provider in a thousand to land here.*
 
 ---
 

@@ -22,7 +22,7 @@ A nine million row dataset was filtered down to 85,862 rows covering 38,816 uniq
 
 This filtering happens using DuckDB, a tool that runs standard SQL queries directly on the raw 3.5 GB CSV file without loading it into memory. The same SQL language used in claims systems. The 9.7 million row file never enters RAM, only the filtered results do. This is why the project does not crash on a laptop.
 
-**Why these seven states:** We limited the analysis to these U.S. states, which have no-fault PIP laws and enough providers in the relevant specialties to draw statistically sound comparisons. 
+**Why these seven states:** The analysis was limited to these 7 U.S. states, which have no-fault PIP laws and enough providers in the relevant specialties to draw statistically sound comparisons. 
 
 **Why Medicare data for a PIP problem:** PIP and Medicare draw from largely the same pool of providers billing for soft-tissue injuries, using the same procedure codes and billing patterns, both visible in Medicare Part B data. What makes Medicare especially valuable here is its fixed reimbursement rates, which are similarly fixed under no-fault PIP.
 
@@ -36,20 +36,25 @@ This filtering happens using DuckDB, a tool that runs standard SQL queries direc
 
 Everything in the model is built from three numbers engineered from the raw CMS billing columns. Each one captures a different dimension of suspicious behavior. None of them require a fraud label to compute becasue they come directly from the billing data itself.
 
-**Feature 1 — Billing inflation ratio:** Medicare's payment doesn't move. The provider's submitted charge does. That ratio, i.e., what they billed versus what Medicare paid shows us pure provider behavior. Normal range: 1.5x to 3x. Red flag: above 8x. Fraud indicator: above 15x. The fixed denominator (Medicare's payment) gives us a measure of overcharge.
+**Feature 1 — Billing inflation ratio:** Medicare pays what it pays (a fixed amount based on procedure and location). The provider bills whatever it wants. That ratio, i.e., what they billed versus what Medicare paid shows us pure provider behavior. Normal range: 1.5x to 3x. Red flag: above 8x. Fraud indicator: above 15x. The fixed denominator (Medicare's payment) gives us a measure of overcharge.
 
 ![Billing inflation ratio by specialty](outputs/figures/01_billing_inflation_by_specialty.png)
-*Figure 1. Distribution of billing inflation ratios by specialty across 85,862 provider-procedure combinations. The green dotted line marks the legitimate upper bound (~3x). The red dashed line marks the anomaly threshold (8x). Physical Medicine and Chiropractic show the heaviest right tails, consistent with their documented role in PIP mill billing. Those tails represent the extreme-billing providers within those specialties.
+**Figure 1.** Distribution of billing inflation ratios by specialty across 85,862 provider-procedure combinations. The green dotted line marks the legitimate upper bound (~3x). The red dashed line marks the anomaly threshold (8x). Physical Medicine and Chiropractic show the heaviest right tails, consistent with their documented role in PIP mill billing. Those tails represent the extreme-billing providers within those specialties.
 
-**Feature 2 — Services per patient:** Total services billed divided by the number of distinct patients. For soft-tissue injuries — the kind that follow car accidents — clinical guidelines support roughly 8 to 14 sessions. A provider averaging 34 sessions per patient for the same injuries is not treating a more severely injured population. The clinical evidence does not support that explanation. What it does support is a billing mill keeping patients in treatment far beyond what is medically warranted.
+**Feature 2 — Services per patient:** For soft-tissue injuries from car accidents, clinical guidelines support somewhere between 8 and 14 treatment sessions. A provider averaging 34 sessions per patient is not treating a more severely injured population. It's a billing mill keeping patients in treatment far beyond what is medically warranted.
 
-**Feature 3 — Peer group z-score:** This is where the statistics come in. A z-score measures how far a value sits from the average of its group, expressed in standard deviations. The peer group is strict: same specialty, same state, same procedure code, same place of service. A physical medicine provider in New York billing CPT 97110 in an office setting is compared only to other physical medicine providers in New York billing CPT 97110 in an office setting — not to surgeons, not to providers in Texas.
+**Feature 3 — Peer group z-score:** This is where the statistics come in. A z-score measures how far a value sits from the average of its group, expressed in standard deviations. The peer group is strict: same specialty, same state, same procedure code, same place of service. A physical medicine provider in New York billing CPT 97110 in an office setting is compared only to other physical medicine providers in New York billing CPT 97110 in an office setting, not to surgeons or providers in Texas.
 
 $$z = \frac{x - \mu}{\sigma}$$
 
 where $x$ = provider billing ratio, $\mu$ = peer group mean, $\sigma$ = peer group standard deviation.
 
-A z-score of 0 means exactly average. A z-score of 2 means in the top 2.3% of peers. A z-score of 3 means in the top 0.1% — three standard deviations above the mean is a level of deviation that occurs by chance less than one time in a thousand. When a provider sits that far from their peers on billing inflation, chance is not a convincing explanation.
+Here, Z-scores measure how far a provider sits from the average. At 0, they're exactly typical. At 2, they're billing higher than 97.7% of peers. 
+At 3, they're in the top 0.1%. By chance alone, you'd expect one provider in a thousand to land here.
+
+![Billing inflation ratio by specialty](outputs/figures/04_zscore_distribution.png)
+
+**Figure 2.**Z-score plot
 
 ---
 

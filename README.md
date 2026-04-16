@@ -32,7 +32,7 @@ This filtering happens using DuckDB, a tool that runs standard SQL queries direc
 
 ## The Three Features
 
-### Step 1 — Feature Engineering
+### 1. Feature Engineering
 
 Everything in the model is built from three numbers engineered from the raw CMS billing columns. Each one captures a different dimension of suspicious behavior. None of them require a fraud label to compute becasue they come directly from the billing data itself.
 
@@ -49,16 +49,14 @@ $$z = \frac{x - \mu}{\sigma}$$
 
 where $x$ = provider billing ratio, $\mu$ = peer group mean, $\sigma$ = peer group standard deviation.
 
-Here, Z-scores measure how far a provider sits from the average. At 0, they're exactly typical. At 2, they're billing higher than 97.7% of peers. 
-At 3, they're in the top 0.1%. By chance alone, you'd expect one provider in a thousand to land here.
 
 ![Billing inflation ratio by specialty](outputs/figures/04_zscore_distribution.png)
 
-**Figure 2.**Z-score plot
+**Figure 2.** Peer group z-score distribution - billing inflation ratio. Z-scores measure how far a provider sits from the average. At 0, they're exactly typical. At 2, they're billing higher than 97.7% of peers. At 3, they're in the top 0.1%. By chance alone, you'd expect one provider in a thousand to land here.
 
 ---
 
-### Step 2 — How Isolation Forest Works
+### 2. How Isolation Forest Works
 
 Isolation Forest is the tool that scores every provider by how suspicious their billing looks. The reason it is useful here is that it does not need anyone to tell it in advance what fraud looks like. It figures it out on its own by asking one simple question about every provider: how different do you look from everyone else?
 
@@ -83,17 +81,17 @@ The model is set with `contamination = 0.05`, meaning we tell it to treat the to
 
 ---
 
-### Step 3 — Random Seeds and Why Stability Matters
+### 3. Random Seeds and Why Stability Matters
 
 Isolation Forest uses randomness to build its trees. Each tree picks random features and random split values. This means that if you run the algorithm twice without fixing the starting conditions, you get slightly different results each time — different random splits, slightly different anomaly scores.
 
 A random seed is simply the starting number that controls all the random decisions inside the algorithm. Think of it as the starting page of a rulebook. If you start on page 42 you get one sequence of random decisions. If you start on page 99 you get a different sequence. Both are random, but each is perfectly reproducible if you know which page you started on.
 
-The number 42 has no special meaning. The point is that by fixing the seed, anyone who runs the same code gets the same result. That is what makes the analysis reproducible.
+The number 42 has no special meaningbut by fixing the seed, anyone who runs the same code gets the same result. That is what makes the analysis reproducible.
 
 ---
 
-### Step 4 — K-Means Clustering (The Three Fraud Typologies)
+### 4. K-Means Clustering (The Three Fraud Typologies)
 
 Isolation Forest tells us *which* providers are anomalous. K-means clustering tells us *what type* of anomaly they are. It groups providers by their billing fingerprint so that something potentially meaningful about the pattern, not just the score, could be discovered. 
 
@@ -112,7 +110,7 @@ K-means works by assigning each provider to one of three clusters, minimizing th
 **Billing inflation (red):** The inverse pattern — services per patient of only 1.76 but inflation ratio of 6.20x. These providers see patients infrequently but inflate what they bill per visit dramatically. Fee schedule manipulation and upcoding live here. An average ratio of 6.2x means many individual providers in this cluster are well above that — top-flagged providers in this cluster will have ratios of 15x or higher.
 
 ![Cluster profiles](outputs/figures/03_cluster_profiles.png)
-*Figure 2. Normalized average feature values per cluster. Each bar group represents one of the four features for a given cluster. The height shows the relative level of that feature compared to the other clusters — revealing what makes each fraud typology distinct.*
+*Figure 3. Normalized average feature values per cluster. Each bar group represents one of the four features for a given cluster. The height shows the relative level of that feature compared to the other clusters — revealing what makes each fraud typology distinct.*
 
 ---
 
@@ -129,7 +127,7 @@ K-means works by assigning each provider to one of three clusters, minimizing th
 - **Individual doctors are being flagged more than clinics — and that is unexpected.** The conventional story about PIP fraud is that it is driven by organized clinics and LLCs — the classic PIP mill model of a storefront operation cycling accident victims through unnecessary treatment. But in this Medicare dataset the majority of the most anomalous providers are individual physicians, not organizations. That is a genuinely interesting and unexpected finding. It could mean that solo practitioners are gaming the Medicare billing system in ways that organized clinics are not, or it could reflect something specific about how Medicare data captures billing differently than PIP data would. Either way it is worth investigating further rather than assuming all PIP fraud looks like the clinic model.
 
 ![Provider anomaly map](outputs/figures/02_anomaly_scatter.png)
-*Figure 3. Billing inflation ratio vs median services per patient for 38,816 providers. Each point is one provider, colored by K-means cluster. Black dots mark the top 2% most anomalous providers by Isolation Forest score. Green dotted lines mark legitimate practice thresholds. Providers in the top-right quadrant — high inflation and high treatment volume simultaneously — represent the highest investigation priority.*
+*Figure 4. Billing inflation ratio vs median services per patient for 38,816 providers. Each point is one provider, colored by K-means cluster. Black dots mark the top 2% most anomalous providers by Isolation Forest score. Green dotted lines mark legitimate practice thresholds. Providers in the top-right quadrant — high inflation and high treatment volume simultaneously — represent the highest investigation priority.*
 
 ---
 

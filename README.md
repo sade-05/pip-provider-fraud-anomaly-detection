@@ -32,18 +32,18 @@ This filtering happens using DuckDB, a tool that runs standard SQL queries direc
 
 ## The Three Features
 
-### 1. Feature Engineering
+### Feature Engineering
 
 Everything in the model is built from three numbers engineered from the raw CMS billing columns. Each one captures a different dimension of suspicious behavior. None of them require a fraud label to compute becasue they come directly from the billing data itself.
 
-**Feature 1 — Billing inflation ratio:** Medicare pays what it pays (a fixed amount based on procedure and location). The provider bills whatever it wants. That ratio, i.e., what they billed versus what Medicare paid shows us pure provider behavior. Normal range: 1.5x to 3x. Red flag: above 8x. Fraud indicator: above 15x. The fixed denominator (Medicare's payment) gives us a measure of overcharge.
+**Feature 1: Billing inflation ratio:** Medicare pays what it pays (a fixed amount based on procedure and location). The provider bills whatever it wants. That ratio, i.e., what they billed versus what Medicare paid shows us pure provider behavior. Normal range: 1.5x to 3x. Red flag: above 8x. Fraud indicator: above 15x. The fixed denominator (Medicare's payment) gives us a measure of overcharge.
 
 ![Billing inflation ratio by specialty](outputs/figures/01_billing_inflation_by_specialty.png)
 **Figure 1.** Distribution of billing inflation ratios by specialty across 85,862 provider-procedure combinations. The green dotted line marks the legitimate upper bound (~3x). The red dashed line marks the anomaly threshold (8x). Physical Medicine and Chiropractic show the heaviest right tails, consistent with their documented role in PIP mill billing. Those tails represent the extreme-billing providers within those specialties.
 
-**Feature 2 — Services per patient:** For soft-tissue injuries from car accidents, clinical guidelines support somewhere between 8 and 14 treatment sessions. A provider averaging 34 sessions per patient is not treating a more severely injured population. It's a billing mill keeping patients in treatment far beyond what is medically warranted.
+**Feature 2: Services per patient:** For soft-tissue injuries from car accidents, clinical guidelines support somewhere between 8 and 14 treatment sessions. A provider averaging 34 sessions per patient is not treating a more severely injured population. It's a billing mill keeping patients in treatment far beyond what is medically warranted.
 
-**Feature 3 — Peer group z-score:** This is where the statistics come in. A z-score measures how far a value sits from the average of its group, expressed in standard deviations. The peer group is strict: same specialty, same state, same procedure code, same place of service. A physical medicine provider in New York billing CPT 97110 in an office setting is compared only to other physical medicine providers in New York billing CPT 97110 in an office setting, not to surgeons or providers in Texas.
+**Feature 3: Peer group z-score:** This is where the statistics come in. A z-score measures how far a value sits from the average of its group, expressed in standard deviations. The peer group is strict: same specialty, same state, same procedure code, same place of service. A physical medicine provider in New York billing CPT 97110 in an office setting is compared only to other physical medicine providers in New York billing CPT 97110 in an office setting, not to surgeons or providers in Texas.
 
 $$z = \frac{x - \mu}{\sigma}$$
 
@@ -56,7 +56,7 @@ where $x$ = provider billing ratio, $\mu$ = peer group mean, $\sigma$ = peer gro
 
 ---
 
-### 2. How Isolation Forest Works
+### How Isolation Forest Works
 
 Isolation Forest is the tool that scores every provider by how suspicious their billing looks. The reason it is useful here is that it does not need anyone to tell it in advance what fraud looks like. It figures it out on its own by asking one simple question about every provider: how different do you look from everyone else?
 
@@ -81,7 +81,7 @@ The model is set with `contamination = 0.05`, meaning we tell it to treat the to
 
 ---
 
-### 3. Random Seeds and Why Stability Matters
+### Random Seeds and Why Stability Matters
 
 Isolation Forest uses randomness to build its trees. Each tree picks random features and random split values. This means that if you run the algorithm twice without fixing the starting conditions, you get slightly different results each time — different random splits, slightly different anomaly scores.
 
@@ -91,7 +91,7 @@ The number 42 has no special meaningbut by fixing the seed, anyone who runs the 
 
 ---
 
-### 4. K-Means Clustering (The Three Fraud Typologies)
+### K-Means Clustering (The Three Fraud Typologies)
 
 Isolation Forest tells us *which* providers are anomalous. K-means clustering tells us *what type* of anomaly they are. It groups providers by their billing fingerprint so that something potentially meaningful about the pattern, not just the score, could be discovered. 
 
@@ -143,31 +143,29 @@ K-means works by assigning each provider to one of three clusters, minimizing th
 
 ---
 
-## Domain Context — Why This Project Is Different
+## Domain Context 
 
-This analysis was developed by a credentialed no-fault claims examiner with nine years of experience in New York PIP claims adjudication, including complex coverage determinations, SIU referral assessment, and for-hire vehicle fraud investigation. The feature engineering decisions — the specific procedure codes selected, the clinical benchmarks used for services-per-patient thresholds, the identification of Physical Medicine and Chiropractic as the highest-risk specialty categories — reflect operational knowledge of how PIP fraud manifests in actual claim files, not arbitrary analytical choices.
+This project was inspired by a background combining an M.S. in Statistics with nine years as a no-fault claims examiner in New York, reviewing PIP billing every day, referring suspicious files to SIU, and learning firsthand what a legitimate injury claim looks like versus an organized fraud scheme. That combination shaped every decision in this project, from the procedure codes selected to the treatment frequency thresholds used to the states chosen for analysis.
 
-The billing patterns flagged by this model are not statistical abstractions. A physical medicine provider billing 17 times the Medicare rate for therapeutic exercises, averaging 34 sessions per patient, with 84% of total billing volume concentrated in a single procedure code, matches the precise profile of a PIP mill as it presents in claims examination: medically implausible treatment duration, inflated charges submitted to the no-fault insurer, and a narrow service menu consistent with a clinic organized around maximizing PIP payments rather than providing individualized care.
-
-The value of domain expertise in data science is not the ability to build more sophisticated models — it is the ability to ask the right questions, select the right features, and interpret statistical output in the context of how the underlying system actually operates. This project is an attempt to demonstrate that combination.
-
+The peer group z-scores and Isolation Forest algorithm provide the statistical credibility to identify anomalies at scale across 38,000 providers. The claims experience provides the judgment to know which anomalies matter. The result is a project where the statistics and the insurance knowledge reinforce each other.
 ---
 
 ## Repository Structure
 
 ```
 cms_provider_anomalies/
-├── notebook_01_data_features.ipynb     # DuckDB SQL filter, feature engineering
-├── notebook_02_anomaly_detection.ipynb # Isolation Forest, clustering, validation
+├── notebook_01_data_features.ipynb      # DuckDB SQL filter, feature engineering
+├── notebook_02_anomaly_detection.ipynb  # Isolation Forest, clustering, validation
 ├── data/
-│   ├── raw/                            # Raw CMS CSV — not committed to GitHub
+│   ├── raw/                             # Raw CMS CSV — not committed to GitHub
 │   └── processed/
-│       └── cms_features.parquet        # Engineered provider features
+│       └── cms_features.parquet         # Engineered provider features
 ├── outputs/
 │   ├── figures/
 │   │   ├── 01_billing_inflation_by_specialty.png
 │   │   ├── 02_anomaly_scatter.png
-│   │   └── 03_cluster_profiles.png
+│   │   ├── 03_cluster_profiles.png
+│   │   └── 04_zscore_distribution.png
 │   └── reports/
 │       └── flagged_providers.csv
 └── README.md
